@@ -2,5 +2,6 @@
   "scopes": [],
   "attributes": [],
   "role-templates": [],
-  "authorities-inheritance": false
+  "xsappname": "cap_request",
+  "tenant-mode": "dedicated"
 }

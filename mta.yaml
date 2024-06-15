@@ -1,0 +1,196 @@
+_schema-version: '3.1'
+ID: cap_request
+version: 1.0.0
+description: A simple CAP project.
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - rm -rf build/dist
+        - mkdir -p build/dist
+        - rm -rf build/ui-deployer
+        - mkdir -p build/ui-deployer
+    - builder: custom
+      commands:
+        - npm install --production
+        - >-
+          bash -c "cds -v | grep 'cds-dk' || npm i --production --no-save
+          @sap/cds-dk @sap/mdk-tools"
+        - bash -c "export PATH=$PATH:$(pwd)/node_modules/.bin"
+        - cds build --production
+  after-all:
+    - builder: custom
+      commands:
+        - npm install
+modules:
+  - name: cap_request-db-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: cap_request-service-uaa
+      - name: cap_request-service-db
+  - name: cap_request-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      memory: 256MB
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: cap_request-service-uaa
+      - name: cap_request-service-db
+      - name: cap_request-service-destination
+      - name: cap_request-service-metadata
+      - name: cap_request-service-connectivity
+      - name: cap_request-service-logs
+  - name: cap_request-aux-destinations
+    type: com.sap.application.content
+    parameters:
+      content:
+        subaccount:
+          existing_destinations_policy: update
+          destinations:
+            - Authentication: OAuth2UserTokenExchange
+              Name: cap_request-service-uaa
+              ServiceInstanceName: cap_request-uaa
+              ServiceKeyName: cap_request-uaa-key
+              sap.cloud.service: lcap.cap_request
+            - Authentication: OAuth2UserTokenExchange
+              Name: cap_request-app-srv
+              TokenServiceInstanceName: cap_request-uaa
+              TokenServiceKeyName: cap_request-uaa-key
+              URL: ~{srv-api/srv-url}
+              sap.cloud.service: lcap.cap_request
+            - Name: cap_request-service-html5-apps-repo-host
+              ServiceInstanceName: cap_request-html5-apps-repo-host
+              ServiceKeyName: cap_request-html5-apps-repo-host-key
+              sap.cloud.service: lcap.cap_request
+            - Authentication: OAuth2UserTokenExchange
+              Name: cap_request-cap_request
+              TokenServiceInstanceName: cap_request-uaa
+              TokenServiceKeyName: cap_request-uaa-key
+              URL: ~{srv-api/srv-url}/service/cap_request
+              sap.cloud.service: lcap.cap_request
+              sap.applicationdevelopment.actions.enabled: false
+              sap.build.usage: CAP
+              sap.processautomation.enabled: false
+              HTML5.DynamicDestination: false
+              WebIDEEnabled: false
+              MobileEnabled: false
+              AppgyverEnabled: false
+    build-parameters:
+      no-source: true
+    requires:
+      - name: cap_request-service-uaa
+        parameters:
+          service-key:
+            name: cap_request-uaa-key
+      - name: srv-api
+      - name: cap_request-service-html5-apps-repo-host
+        parameters:
+          service-key:
+            name: cap_request-html5-apps-repo-host-key
+      - name: cap_request-service-destination
+        parameters:
+          content-target: true
+  - name: cap_request-launchpad
+    type: html5
+    path: build/launchpad
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateCachebusterInfo
+        - bash -c "cd dist && npx bestzip ../../../build/dist/launchpad.zip *"
+        - rm -rf dist
+      _artifactName: launchpad.zip
+      supported-platforms: []
+      build-result: ../../build/dist
+  - name: cap_request-aux-ui-deployer
+    type: com.sap.application.content
+    path: build/ui-deployer
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: cap_request-launchpad
+          artifacts:
+            - launchpad.zip
+          target-path: resources
+    requires:
+      - name: cap_request-service-html5-apps-repo-host
+        parameters:
+          content-target: true
+resources:
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-uaa
+    parameters:
+      service: xsuaa
+      service-plan: application
+      service-name: cap_request-uaa
+      path: xs-security.json
+      config:
+        oauth2-configuration:
+          redirect-uris:
+            - https://*.${default-domain}/login/*
+        xsappname: cap_request-${space}
+        role-collections: []
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-db
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+      service-name: cap_request-db
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-destination
+    parameters:
+      service: destination
+      service-plan: lite
+      service-name: cap_request-destination
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+  - type: org.cloudfoundry.user-provided-service
+    name: cap_request-service-metadata
+    parameters:
+      service: metadata
+      service-plan: standard
+      service-name: cap_request-metadata
+      config:
+        default-domain: ${default-domain}
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-connectivity
+    parameters:
+      service: connectivity
+      service-plan: lite
+      service-name: cap_request-connectivity
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-logs
+    parameters:
+      service: application-logs
+      service-plan: lite
+      service-name: cap_request-logs
+  - type: org.cloudfoundry.managed-service
+    name: cap_request-service-html5-apps-repo-host
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      service-name: cap_request-html5-apps-repo-host

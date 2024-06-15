@@ -56,6 +56,13 @@
       "label": "Enable Discovery and Deploy cap_request",
       "taskType": "Deploy",
       "enableDiscovery": "true"
+    },
+    {
+      "type": "build.mta",
+      "label": "Build MTA: cap_request",
+      "taskType": "Build",
+      "projectPath": "/home/user/projects/cap_request",
+      "extensions": []
     }
   ]
 }
