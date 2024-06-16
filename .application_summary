@@ -1,0 +1,5 @@
+{
+  "ProjectOverviewURL": "https://0ea55c04trial.launchpad.cfapps.us10.hana.ondemand.com/lcapcap_request.cap_requestLaunchpad-1.0.0",
+  "DeployedUTCTime": "2024-06-15T18:32:31.413Z",
+  "ApplicationLogURL": "https://logs.cf.us10-001.hana.ondemand.com/app/dashboards#/view/Overview?_g=(filters:!((query:(match_phrase:(component_name:cap_request-srv)))))"
+}

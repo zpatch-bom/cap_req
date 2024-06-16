@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "hash": "886b0db4c26b90e35c7158b11ba072ea7457dfc482159d164da8623ffd3ada171ea25c38a98ebe9b2cde35b6753af249e93f74a0c81f96a29d42c7f5850f9cd6",
+  "configuration": {
+    "phase": "on",
+    "events": [
+      "createDraft"
+    ],
+    "entity": "cap_request.Requests"
+  },
+  "codes": [
+    {
+      "type": "IfElse",
+      "expression": {
+        "syntax": "aa == 1",
+        "dependencies": [
+          "Variable",
+          "Expression"
+        ]
+      },
+      "then": [],
+      "else": []
+    }
+  ]
+}
